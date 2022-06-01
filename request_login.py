@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
 
 import jwt
-from flask import Request, jsonify
+from flask import Request
 
-from database import postgresql
 
 
 class RequestLogin:
@@ -14,15 +13,7 @@ class RequestLogin:
         self.login = args.get('login')
         self.password = request.headers.get('password')
 
-    def authenticate_account(self):
-        if postgresql.authenticate_account(self.login, self.password):
-            pass
-        else:
-            raise AttributeError
-
-    def encode(self):
-        id = postgresql.find_account_id_by_login(self.login)
-
+    def encode(self, id):
         encode = jwt.encode({
             'id': "{}".format(id),
             'exp': datetime.utcnow() + timedelta(minutes=5)

@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, request
 from account import Account
 from database import postgresql
-from exception_error import CpfError, EmailError, DateError, CnpjError, PhoneError
 from request_account import RequestCreateAccount
+from exception_error import CpfError, EmailError, DateError, CnpjError, PhoneError, LoginError, PasswordError, \
+    DateFormatError, LoginShortSizeError, LoginLargeSizeError, PasswordLargeSizeError, \
+    PasswordShortSizeError
 from request_login import RequestLogin
 from request_token import AuthenticateToken
 
@@ -18,7 +20,25 @@ def create():
                           request_account.email, request_account.phone,
                           request_account.cnpj, request_account.date)
 
-        request_account.insert_account(account)
+        if postgresql.exists_account_by_login(request_account.login):
+            return jsonify({"message": "login already used"}), 409
+
+        postgresql.insert_account(account)
+
+        return jsonify(account.json())
+
+    except LoginLargeSizeError:
+        return jsonify({"message": "login exceeds 18 characters"}), 400
+    except LoginShortSizeError:
+        return jsonify({"message": "short login"}), 400
+    except LoginError:
+        return jsonify({"message": "login invalid"}), 400
+    except PasswordError:
+        return jsonify({"message": "password invalid"}), 400
+    except PasswordLargeSizeError:
+        return jsonify({"message": "password exceeds 16 characters"}), 400
+    except PasswordShortSizeError:
+        return jsonify({"message": "short password"}), 400
     except CpfError:
         return jsonify({"message": "cpf invalid"}), 400
     except EmailError:
@@ -27,24 +47,22 @@ def create():
         return jsonify({"message": "phone number invalid"}), 400
     except CnpjError:
         return jsonify({"message": "cnpj invalid"}), 400
-    except ValueError:
+    except DateFormatError:
         return jsonify({"message": "incorrect date format"}), 400
     except DateError:
         return jsonify({"message": "date invalid"}), 400
-
-    return jsonify(account.json())
 
 
 @app.route('/accounts/login', methods=['POST'])
 def login():
     request_login = RequestLogin(request)
 
-    try:
-        request_login.authenticate_account()
-    except AttributeError:
+    if not postgresql.authenticate_account(request_login.login, request_login.password):
         return jsonify({"message": "Password or login incorrect"}), 403
 
-    return jsonify({"token": "{}".format(request_login.encode())})
+    id = postgresql.find_account_by_login(request_login.login)
+
+    return jsonify({"token": "{}".format(request_login.encode(id))})
 
 
 @app.route('/accounts', methods=['GET'])
@@ -53,39 +71,66 @@ def find():
 
     try:
         decode_token = token_request.authenticate()
+
+        if not postgresql.exists_account_by_id(decode_token['id']):
+            return jsonify({"message": "Unauthorized Token"}), 403
+
+        account = postgresql.find_account_by_id(decode_token['id'])
+        return jsonify(account.json())
     except RuntimeError:
         return jsonify({"message": "Token expired"}), 403
     except NameError:
         return jsonify({"message": "Invalid Token"}), 403
-
-    find_account = postgresql.find_account_by_id(decode_token['id'])
-    print(find_account)
-
-    account = Account(find_account[2], find_account[1], find_account[3],
-                      find_account[4], find_account[5], find_account[6], str(find_account[7]).replace(" 00:00:00", ""))
-
-    return jsonify(account.json())
 
 
 @app.route('/accounts', methods=['PUT'])
 def change():
     token_request = AuthenticateToken(request)
-    request_account = RequestCreateAccount(request)
 
     try:
         decode_token = token_request.authenticate()
+
+        if not postgresql.exists_account_by_id(decode_token['id']):
+            return jsonify({"message": "Unauthorized Token"}), 403
+
+        request_account = RequestCreateAccount(request)
+
+        account = Account(request_account.password, request_account.login, request_account.cpf,
+                          request_account.email, request_account.phone,
+                          request_account.cnpj, request_account.date)
+
+        postgresql.update_account_by_id(account, decode_token['id'])
+
+        return jsonify(account.json())
+
     except RuntimeError:
         return jsonify({"message": "Token expired"}), 403
     except NameError:
         return jsonify({"message": "Invalid Token"}), 403
-
-    account = Account(request_account.password, request_account.login, request_account.cpf,
-                      request_account.email, request_account.phone,
-                      request_account.cnpj, request_account.date)
-
-    request_account.update_account_by_id(account, decode_token['id'])
-
-    return jsonify(account.json())
+    except LoginLargeSizeError:
+        return jsonify({"message": "login exceeds 18 characters"}), 400
+    except LoginShortSizeError:
+        return jsonify({"message": "short login"}), 400
+    except LoginError:
+        return jsonify({"message": "login invalid"}), 400
+    except PasswordError:
+        return jsonify({"message": "password invalid"}), 400
+    except PasswordLargeSizeError:
+        return jsonify({"message": "password exceeds 16 characters"}), 400
+    except PasswordShortSizeError:
+        return jsonify({"message": "short password"}), 400
+    except CpfError:
+        return jsonify({"message": "cpf invalid"}), 400
+    except EmailError:
+        return jsonify({"message": "email invalid"}), 400
+    except PhoneError:
+        return jsonify({"message": "phone number invalid"}), 400
+    except CnpjError:
+        return jsonify({"message": "cnpj invalid"}), 400
+    except DateFormatError:
+        return jsonify({"message": "incorrect date format"}), 400
+    except DateError:
+        return jsonify({"message": "date invalid"}), 400
 
 
 @app.route('/accounts', methods=['DELETE'])
@@ -94,6 +139,10 @@ def delete():
 
     try:
         decode_token = token_request.authenticate()
+
+        if not postgresql.exists_account_by_id(decode_token['id']):
+            return jsonify({"message": "Unauthorized Token"}), 403
+
     except RuntimeError:
         return jsonify({"message": "Token expired"}), 403
     except NameError:

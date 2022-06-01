@@ -3,6 +3,7 @@ import psycopg2
 from account import Account
 
 
+
 class ConnectionPostgreSQL:
 
     def __init__(self):
@@ -27,8 +28,10 @@ class ConnectionPostgreSQL:
             cur.execute(sql,
                         (account.id, account.login, account.password, account.cpf, account.email, account.phone,
                          account.cnpj, account.date))
+
             self.conn.commit()
             cur.close()
+
         except (Exception, psycopg2.Error) as error:
             print("Failed to insert into table", error)
 
@@ -56,7 +59,7 @@ class ConnectionPostgreSQL:
         except (Exception, psycopg2.Error) as error:
             print("Failed to insert into table", error)
 
-    def find_account_id_by_login(self, login):
+    def find_account_by_login(self, login):
         try:
             cur = self.conn.cursor()
 
@@ -93,10 +96,15 @@ class ConnectionPostgreSQL:
             cur.close()
 
             if records:
-                return records[0]
+                account = Account(records[0][2], records[0][1], records[0][3],
+                                  records[0][4], records[0][5], records[0][6],
+                                  str(records[0][7]).replace(" 00:00:00", ""))
+                return account
+
 
         except (Exception, psycopg2.Error) as error:
             print("Failed to insert into table", error)
+
 
     def update_account_by_id(self, account: Account, id):
         try:
@@ -113,6 +121,8 @@ class ConnectionPostgreSQL:
 
             self.conn.commit()
             cur.close()
+
+
         except (Exception, psycopg2.Error) as error:
             print("Failed to insert into table", error)
 
@@ -129,11 +139,61 @@ class ConnectionPostgreSQL:
             cur.execute(sql,
                         (id,))
 
+
             self.conn.commit()
             cur.close()
 
         except (Exception, psycopg2.Error) as error:
-            print("Failed to insert into table", error)
+            print(error)
+
+
+    def exists_account_by_login(self, login):
+        try:
+            cur = self.conn.cursor()
+
+            sql = """
+                    SELECT login
+                    FROM public.account
+                    WHERE login = %s
+            """
+
+            cur.execute(sql,
+                        (login,))
+
+            records = cur.fetchall()
+            cur.close()
+
+            if records:
+                return True
+            else:
+                return False
+
+        except (Exception, psycopg2.Error) as error:
+            print(error)
+
+    def exists_account_by_id(self, id):
+        try:
+            cur = self.conn.cursor()
+
+            sql = """
+                    SELECT id
+                    FROM public.account
+                    WHERE id = %s
+            """
+
+            cur.execute(sql,
+                        (id,))
+
+            records = cur.fetchall()
+            cur.close()
+
+            if records:
+                return True
+            else:
+                return False
+
+        except (Exception, psycopg2.Error) as error:
+            print(error)
 
 
 postgresql = ConnectionPostgreSQL()

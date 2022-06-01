@@ -1,9 +1,7 @@
 from datetime import datetime
-
 from flask import Request
-from account import Account
-from database import postgresql
-from exception_error import CpfError, EmailError, PhoneError, CnpjError, DateError
+
+from exception_error import CpfError, EmailError, DateError, CnpjError, PhoneError, LoginError, PasswordError, DateFormatError, ConflictError, LoginShortSizeError, LoginLargeSizeError, PasswordLargeSizeError, PasswordShortSizeError
 import re
 
 from validate_docbr import CPF, CNPJ
@@ -15,8 +13,25 @@ class RequestCreateAccount:
     def __init__(self, request: Request):
         input_json = request.get_json(force=True)
 
-        self.login = input_json['login']
-        self.password = input_json['password']
+        login = input_json['login']
+        if len(login) > 18:
+            raise LoginLargeSizeError("login exceeds 18 characters")
+        if len(login) < 6:
+            raise LoginShortSizeError("login too short")
+        if self.validate_login(login):
+            self.login = login
+        else:
+            raise LoginError("invalid login")
+
+        password = input_json['password']
+        if len(password) > 18:
+            raise PasswordLargeSizeError("password exceeds 16 characters")
+        if len(password) < 4:
+            raise PasswordShortSizeError("password too short")
+        if self.validate_password(password):
+            self.password = password
+        else:
+            raise PasswordError("invalid password")
 
         cpf = input_json['cpf']
         if self.validate_cpf(cpf):
@@ -25,7 +40,6 @@ class RequestCreateAccount:
             raise CpfError("invalid cpf")
 
         email = input_json['email']
-
         if self.validate_email(email):
             self.email = email
         else:
@@ -47,19 +61,20 @@ class RequestCreateAccount:
         try:
             datetime.strptime(date, '%Y-%m-%d')
         except ValueError:
-            raise ValueError("Incorrect date format")
+            raise DateFormatError("Incorrect date format")
 
         if self.validate_date(date):
             self.date = date
         else:
             raise DateError("invalid date")
 
+    def validate_login(self, login):
+        regex = "^[a-zA-Z0-9]+$"
+        return re.search(regex, login)
 
-    def insert_account(self, account: Account):
-        postgresql.insert_account(account)
-
-    def update_account_by_id(self, account: Account, id):
-        postgresql.update_account_by_id(account, id)
+    def validate_password(self, password):
+        regex = "^[a-zA-Z0-9]+$"
+        return re.search(regex, password)
 
     def validate_cpf(self, cpf):
         if len(cpf) == 11:

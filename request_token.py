@@ -7,7 +7,6 @@ class AuthenticateToken:
     def __init__(self, request: Request):
         self.token = request.headers.get('token')
 
-
     def authenticate(self):
         try:
             return jwt.decode(self.token, "secret", algorithms=["HS256"])
