@@ -1,62 +1,61 @@
-import datetime
-import jwt
 from flask import Flask, jsonify, request
 from account import Account
-from database import ConnectionPostgreSQL
+from database import postgresql
+from exception_error import CpfError, EmailError, DateError, CnpjError, PhoneError
+from request_account import RequestCreateAccount
+from request_login import RequestLogin
+from request_token import AuthenticateToken
 
 app = Flask(__name__)
-postgresql = ConnectionPostgreSQL()
 
 
 @app.route('/accounts', methods=['POST'])
 def create():
-    input_json = request.get_json(force=True)
+    try:
+        request_account = RequestCreateAccount(request)
 
-    login = input_json['login']
-    password = input_json['password']
-    cpf = input_json['cpf']
-    email = input_json['email']
-    phone = input_json['phone']
-    cnpj = input_json['cnpj']
-    date = input_json['date']
+        account = Account(request_account.password, request_account.login, request_account.cpf,
+                          request_account.email, request_account.phone,
+                          request_account.cnpj, request_account.date)
 
-    account = Account(password, login, cpf,
-                      email, phone, cnpj, date)
-
-    postgresql.insert_account(account)
+        request_account.insert_account(account)
+    except CpfError:
+        return jsonify({"message": "cpf invalid"}), 400
+    except EmailError:
+        return jsonify({"message": "email invalid"}), 400
+    except PhoneError:
+        return jsonify({"message": "phone number invalid"}), 400
+    except CnpjError:
+        return jsonify({"message": "cnpj invalid"}), 400
+    except ValueError:
+        return jsonify({"message": "incorrect date format"}), 400
+    except DateError:
+        return jsonify({"message": "date invalid"}), 400
 
     return jsonify(account.json())
 
 
 @app.route('/accounts/login', methods=['POST'])
 def login():
-    args = request.args
+    request_login = RequestLogin(request)
 
-    login = args.get('login')
-    password = request.headers.get('password')
-
-    if not postgresql.authenticate_account(login, password):
+    try:
+        request_login.authenticate_account()
+    except AttributeError:
         return jsonify({"message": "Password or login incorrect"}), 403
 
-    id = postgresql.find_account_id_by_login(login)
-    dt = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
-    encode = jwt.encode({
-        'id': "{}".format(id),
-        'exp': dt
-    }, 'secret', algorithm='HS256')
-
-    return jsonify({"token": "{}".format(encode)})
+    return jsonify({"token": "{}".format(request_login.encode())})
 
 
 @app.route('/accounts', methods=['GET'])
 def find():
-    token = request.headers.get('token')
+    token_request = AuthenticateToken(request)
 
     try:
-        decode_token = jwt.decode(token, "secret", algorithms=["HS256"])
-    except jwt.ExpiredSignatureError:
+        decode_token = token_request.authenticate()
+    except RuntimeError:
         return jsonify({"message": "Token expired"}), 403
-    except jwt.InvalidTokenError:
+    except NameError:
         return jsonify({"message": "Invalid Token"}), 403
 
     find_account = postgresql.find_account_by_id(decode_token['id'])
@@ -70,44 +69,36 @@ def find():
 
 @app.route('/accounts', methods=['PUT'])
 def change():
-    input_json = request.get_json(force=True)
-
-    token = request.headers.get('token')
+    token_request = AuthenticateToken(request)
+    request_account = RequestCreateAccount(request)
 
     try:
-        decode_token = jwt.decode(token, "secret", algorithms=["HS256"])
-    except jwt.ExpiredSignatureError:
+        decode_token = token_request.authenticate()
+    except RuntimeError:
         return jsonify({"message": "Token expired"}), 403
-    except jwt.InvalidTokenError:
+    except NameError:
         return jsonify({"message": "Invalid Token"}), 403
 
-    login = input_json['login']
-    password = input_json['password']
-    cpf = input_json['cpf']
-    email = input_json['email']
-    phone = input_json['phone']
-    cnpj = input_json['cnpj']
-    date = input_json['date']
+    account = Account(request_account.password, request_account.login, request_account.cpf,
+                      request_account.email, request_account.phone,
+                      request_account.cnpj, request_account.date)
 
-    account = Account(password, login, cpf,
-                      email, phone, cnpj, date)
-
-    postgresql.update_account_by_id(account, decode_token['id'])
+    request_account.update_account_by_id(account, decode_token['id'])
 
     return jsonify(account.json())
 
 
 @app.route('/accounts', methods=['DELETE'])
 def delete():
-    token = request.headers.get('token')
+    token_request = AuthenticateToken(request)
 
     try:
-        decode_token = jwt.decode(token, "secret", algorithms=["HS256"])
-    except jwt.ExpiredSignatureError:
+        decode_token = token_request.authenticate()
+    except RuntimeError:
         return jsonify({"message": "Token expired"}), 403
-    except jwt.InvalidTokenError:
+    except NameError:
         return jsonify({"message": "Invalid Token"}), 403
 
     postgresql.delete_account_id_by_id(decode_token['id'])
 
-    return jsonify({"message": "Deleted"}), 404
+    return jsonify({"message": "Successfully deleted"})

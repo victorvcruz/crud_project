@@ -25,7 +25,8 @@ class ConnectionPostgreSQL:
             """
 
             cur.execute(sql,
-                        (account.id, account.login, account.password, account.cpf, account.email, account.phone, account.cnpj, account.date))
+                        (account.id, account.login, account.password, account.cpf, account.email, account.phone,
+                         account.cnpj, account.date))
             self.conn.commit()
             cur.close()
         except (Exception, psycopg2.Error) as error:
@@ -48,10 +49,8 @@ class ConnectionPostgreSQL:
             cur.close()
 
             if records:
-                print("existe")
                 return True
             else:
-                print("NAO existe")
                 return False
 
         except (Exception, psycopg2.Error) as error:
@@ -66,7 +65,7 @@ class ConnectionPostgreSQL:
                     FROM public.account
                     WHERE login = %s
             """
-            print(login)
+
             cur.execute(sql,
                         (login,))
             records = cur.fetchall()
@@ -87,7 +86,7 @@ class ConnectionPostgreSQL:
                     FROM public.account
                     WHERE id = %s
             """
-            print(id)
+
             cur.execute(sql,
                         (id,))
             records = cur.fetchall()
@@ -108,10 +107,9 @@ class ConnectionPostgreSQL:
                     SET login = %s, password = %s, cpf = %s, email = %s, phone = %s, cnpj = %s, date = %s
                     WHERE id = %s
             """
-            print(id)
+
             cur.execute(sql,
-                        (account.login, account.password, account.cpf, account.email,
-                         account.phone, account.cnpj, account.date, id))
+                        (account.login, account.password, account.cpf, account.email, account.phone, account.cnpj, account.date, id))
 
             self.conn.commit()
             cur.close()
@@ -127,7 +125,7 @@ class ConnectionPostgreSQL:
                     FROM public.account
                     WHERE id = %s
             """
-            print(id)
+
             cur.execute(sql,
                         (id,))
 
@@ -136,3 +134,6 @@ class ConnectionPostgreSQL:
 
         except (Exception, psycopg2.Error) as error:
             print("Failed to insert into table", error)
+
+
+postgresql = ConnectionPostgreSQL()
