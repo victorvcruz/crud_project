@@ -60,6 +60,7 @@ in the "token" header put your token
 } 
 ```
 <br />
+
 * DeleteAccount
 
 `DELETE in http://localhost:5000/accounts`
