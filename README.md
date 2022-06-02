@@ -17,46 +17,58 @@ To stop execution run `sudo docker-compose down`
 
 ```
 {
-	"login": (your login),
-	"password": (your password),
-	"cpf": (your cpf),
-	"email": (your email),
-	"phone": (your phone),
-	"cnpj": (your cnpj),
-	"date": (your birth date)
+	"login": "thiago222",
+	"password": "12345",
+	"cpf": "17539433027",
+	"email": "thiago245@gmail.com",
+	"phone": "5562980078265",
+	"cnpj": "07653804000139",
+	"date": "1999-04-20"
 } 
 ```
 <br />
 
 * CreateToken
 
-`POST in http://localhost:5000/accounts/login?login=(your login)`
+`POST in http://localhost:5000/accounts/login?login=thiago222`
 
-in the "password" header put your password
+Headers: "password": "12345"
+
+<br />
+
+then will return:
+
+```
+{
+	"token": "eyJ0eXAiOiJKV1QiLCJ_example"
+}
+```
+
 <br />
 <br />
+
 * GetAccount
 
 `GET in http://localhost:5000/accounts`
 
-in the "token" header put your token
+Headers: "token": "eyJ0eXAiOiJKV1QiLCJ_example"
 <br />
 <br />
 * UpdateAccount
 
 `PUT in http://localhost:5000/accounts`
 
-in the "token" header put your token
+Headers: "token": "eyJ0eXAiOiJKV1QiLCJ_example"
 
 ```
 {
-	"login": (your login),
-	"password": (your password),
-	"cpf": (your cpf),
-	"email": (your email),
-	"phone": (your phone),
-	"cnpj": (your cnpj),
-	"date": (your birth date)
+	"login": "thiago4444",
+	"password": "12345",
+	"cpf": "17539433027",
+	"email": "thiago245@gmail.com",
+	"phone": "5562980078265",
+	"cnpj": "07653804000139",
+	"date": "1999-04-20"
 } 
 ```
 <br />
@@ -65,5 +77,5 @@ in the "token" header put your token
 
 `DELETE in http://localhost:5000/accounts`
 
-in the "token" header put your token
+Headers: "token": "eyJ0eXAiOiJKV1QiLCJ_example"
 
